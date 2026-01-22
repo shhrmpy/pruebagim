@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <!-- Viewport ajustado para que no haga zoom en movil y se sienta como app nativa -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GymTracker - Diario Local</title>
+    
+    <!-- Metaetiquetas para que parezca una App Nativa al añadir a pantalla de inicio -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#09090b">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Babel para traducir JSX en el navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Estilos personalizados -->
+    <style>
+        body { 
+            background-color: #09090b; 
+            color: #e4e4e7; 
+            overscroll-behavior-y: none; /* Evita el rebote de scroll en movil */
+            -webkit-tap-highlight-color: transparent; /* Quita el flash azul al tocar en movil */
+        }
+        /* Ocultar scrollbar pero permitir scroll */
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Ajustes específicos para inputs en iOS para evitar zoom automático */
+        input[type="number"] { font-size: 16px; } 
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Script Principal -->
+    <script type="text/babel" data-type="module">
+        // Importaciones simplificadas (ya no necesitamos Firebase)
+        import React, { useState, useEffect, useRef } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        import { ChevronLeft, ChevronRight, Plus, Trash2, Dumbbell, X, Calendar, CheckCircle2, TrendingUp, Save } from 'https://esm.sh/lucide-react@0.344.0';
+
+        // --- Utilidades ---
+        const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const daysOfWeek = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+        
+        const formatDateId = (date) => date.toISOString().split('T')[0];
+        const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+        const getFirstDayOfMonth = (year, month) => {
+            const day = new Date(year, month, 1).getDay();
+            return day === 0 ? 6 : day - 1;
+        };
+        const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+
+        // --- Componentes ---
+
+        const LoadingScreen = () => (
+            <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-400 gap-4">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                <p className="text-sm font-medium animate-pulse">Cargando datos locales...</p>
+            </div>
+        );
+
+        const SetRow = ({ set, index, onChange, onRemove }) => (
+            <div className="flex items-center gap-3 mb-2 animate-in">
+                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-500 font-mono">
+                    {index + 1}
+                </div>
+                <div className="grid grid-cols-2 gap-2 flex-1">
+                    <div className="relative group">
+                        <input type="number" value={set.weight} onChange={(e) => onChange(index, 'weight', e.target.value)} placeholder="0" 
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:border-blue-500/50 focus:bg-zinc-900 focus:outline-none transition-all placeholder-zinc-700 text-center" />
+                        <span className="absolute right-2 top-2.5 text-[10px] text-zinc-600 pointer-events-none">KG</span>
+                    </div>
+                    <div className="relative group">
+                        <input type="number" value={set.reps} onChange={(e) => onChange(index, 'reps', e.target.value)} placeholder="0" 
+                            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:border-green-500/50 focus:bg-zinc-900 focus:outline-none transition-all placeholder-zinc-700 text-center" />
+                        <span className="absolute right-2 top-2.5 text-[10px] text-zinc-600 pointer-events-none">REPS</span>
+                    </div>
+                </div>
+                <button onClick={() => onRemove(index)} className="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"><X size={14} /></button>
+            </div>
+        );
+
+        const ExerciseCard = ({ exercise, onUpdate, onDelete }) => {
+            const addSet = () => {
+                const currentSets = exercise.sets || [];
+                const lastSet = currentSets.length > 0 ? currentSets[currentSets.length - 1] : null;
+                const newSets = [...currentSets, { weight: lastSet ? lastSet.weight : '', reps: '' }];
+                onUpdate({ ...exercise, sets: newSets });
+            };
+            const updateSet = (index, field, value) => {
+                const newSets = [...(exercise.sets || [])];
+                if (newSets[index]) { newSets[index][field] = value; onUpdate({ ...exercise, sets: newSets }); }
+            };
+            const removeSet = (index) => {
+                const newSets = (exercise.sets || []).filter((_, i) => i !== index);
+                onUpdate({ ...exercise, sets: newSets });
+            };
+            const totalVolume = (exercise.sets || []).reduce((acc, set) => acc + (Number(set.weight || 0) * Number(set.reps || 0)), 0);
+
+            return (
+                <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4 mb-4 backdrop-blur-sm">
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-zinc-800/50">
+                        <input type="text" value={exercise.name} onChange={(e) => onUpdate({ ...exercise, name: e.target.value })} placeholder="Nombre del ejercicio..." 
+                            className="bg-transparent text-lg font-bold text-zinc-100 placeholder-zinc-600 focus:outline-none w-full mr-2" />
+                        <div className="flex items-center gap-2">
+                            {totalVolume > 0 && <div className="hidden sm:flex items-center gap-1 text-[10px] text-zinc-500 bg-zinc-900 px-2 py-1 rounded-full border border-zinc-800"><TrendingUp size={10} />{totalVolume} kg</div>}
+                            <button onClick={onDelete} className="p-1.5 text-zinc-500 hover:text-red-500 transition-colors rounded-md hover:bg-zinc-800"><Trash2 size={16} /></button>
+                        </div>
+                    </div>
+                    <div className="space-y-1">{(exercise.sets || []).map((set, idx) => <SetRow key={idx} set={set} index={idx} onChange={updateSet} onRemove={removeSet} />)}</div>
+                    <button onClick={addSet} className="mt-4 w-full py-2 flex items-center justify-center gap-2 text-xs font-semibold text-blue-400 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/10 rounded-lg transition-all"><Plus size={14} /> AÑADIR SERIE</button>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [loading, setLoading] = useState(true);
+            const [viewDate, setViewDate] = useState(new Date());
+            const [selectedDate, setSelectedDate] = useState(new Date());
+            const [workoutLogs, setWorkoutLogs] = useState({});
+            const [currentExercises, setCurrentExercises] = useState([]);
+            const [isSyncing, setIsSyncing] = useState(false);
+            const saveTimeoutRef = useRef(null);
+
+            // Cargar datos desde localStorage al iniciar
+            useEffect(() => {
+                const loadData = () => {
+                    try {
+                        const savedData = localStorage.getItem('gym_tracker_data');
+                        if (savedData) {
+                            setWorkoutLogs(JSON.parse(savedData));
+                        }
+                    } catch (e) {
+                        console.error("Error cargando datos locales:", e);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                // Pequeño delay artificial para que se vea la pantalla de carga (opcional)
+                setTimeout(loadData, 500);
+            }, []);
+
+            // Actualizar vista cuando cambia el día seleccionado o los logs globales
+            useEffect(() => {
+                const dateKey = formatDateId(selectedDate);
+                if (workoutLogs[dateKey]) {
+                    setCurrentExercises(workoutLogs[dateKey].exercises || []);
+                } else {
+                    setCurrentExercises([]);
+                }
+            }, [selectedDate, workoutLogs]);
+
+            // Guardar en localStorage
+            const saveLocal = (newLogs) => {
+                setIsSyncing(true);
+                try {
+                    localStorage.setItem('gym_tracker_data', JSON.stringify(newLogs));
+                    setWorkoutLogs(newLogs); // Actualizar estado global
+                    
+                    // Simular un pequeño tiempo de guardado para feedback visual
+                    setTimeout(() => setIsSyncing(false), 600);
+                } catch (e) {
+                    console.error("Error guardando:", e);
+                    alert("Error: No hay espacio en localStorage o está deshabilitado.");
+                    setIsSyncing(false);
+                }
+            };
+
+            const handleExercisesChange = (newExercises) => {
+                setCurrentExercises(newExercises); // Actualizar UI inmediatamente
+                
+                const dateKey = formatDateId(selectedDate);
+                
+                // Preparar nuevo objeto de logs
+                // Si no hay ejercicios, eliminamos la entrada para limpiar datos
+                let updatedLogs;
+                if (newExercises.length === 0) {
+                    updatedLogs = { ...workoutLogs };
+                    delete updatedLogs[dateKey];
+                } else {
+                    updatedLogs = {
+                        ...workoutLogs,
+                        [dateKey]: {
+                            date: dateKey,
+                            updatedAt: Date.now(),
+                            exercises: newExercises
+                        }
+                    };
+                }
+
+                // Debounce para no guardar a cada tecla pulsada
+                if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+                saveTimeoutRef.current = setTimeout(() => {
+                    saveLocal(updatedLogs);
+                }, 800);
+            };
+
+            const handlePrevMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+            const handleNextMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+            
+            const renderCalendar = () => {
+                const year = viewDate.getFullYear(), month = viewDate.getMonth();
+                const daysInMonth = getDaysInMonth(year, month), firstDay = getFirstDayOfMonth(year, month);
+                const blanks = Array(firstDay).fill(null), days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+                return (
+                    <div className="grid grid-cols-7 gap-1 text-center mb-6">
+                        {daysOfWeek.map((d, i) => <div key={i} className="text-[10px] font-bold text-zinc-600 uppercase py-2">{d}</div>)}
+                        {blanks.map((_, i) => <div key={`b-${i}`} />)}
+                        {days.map(day => {
+                            const date = new Date(year, month, day);
+                            const key = formatDateId(date), isSel = formatDateId(selectedDate) === key;
+                            const isToday = formatDateId(new Date()) === key, hasData = workoutLogs[key]?.exercises?.length > 0;
+                            return (
+                                <button key={day} onClick={() => { setSelectedDate(date); }}
+                                    className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all duration-300
+                                    ${isSel ? 'bg-blue-600 text-white shadow-lg scale-105 z-10' : 'text-zinc-400 hover:bg-zinc-900'}
+                                    ${isToday && !isSel ? 'border border-blue-500/30 text-blue-400' : ''}`}>
+                                    <span className={`text-sm ${isSel ? 'font-bold' : 'font-medium'}`}>{day}</span>
+                                    {hasData && <span className={`absolute bottom-1.5 w-1 h-1 rounded-full ${isSel ? 'bg-white' : 'bg-blue-500'}`} />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                );
+            };
+
+            if (loading) return <LoadingScreen />;
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen flex flex-col border-x border-zinc-900/50 shadow-2xl bg-zinc-950 relative">
+                    <header className="px-6 py-5 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-900 sticky top-0 z-50 flex items-center justify-between">
+                        <div><h1 className="text-xl font-bold text-white">GymTracker</h1><p className="text-[10px] text-zinc-500 uppercase font-semibold">Modo Local (Offline)</p></div>
+                        <div className="flex items-center gap-1 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800">
+                            <button onClick={handlePrevMonth} className="p-1.5 hover:text-white text-zinc-500"><ChevronLeft size={18} /></button>
+                            <span className="text-xs font-medium w-20 text-center text-zinc-300">{months[viewDate.getMonth()]}</span>
+                            <button onClick={handleNextMonth} className="p-1.5 hover:text-white text-zinc-500"><ChevronRight size={18} /></button>
+                        </div>
+                    </header>
+                    <main className="flex-1 p-4 overflow-y-auto pb-20">
+                        <div className="bg-zinc-900/20 p-2 rounded-3xl mb-6">{renderCalendar()}</div>
+                        <div className="flex items-end justify-between px-2 mb-4">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white capitalize">{selectedDate.toLocaleDateString('es-ES', { weekday: 'long' })}</h2>
+                                <p className="text-zinc-500 text-sm capitalize">{selectedDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+                            </div>
+                            {isSyncing ? <span className="text-[10px] text-blue-500 animate-pulse flex items-center gap-1"><Save size={10} /> Guardando en PC...</span> : <span className="text-[10px] text-green-500 flex items-center gap-1"><CheckCircle2 size={12} /> Guardado</span>}
+                        </div>
+                        <div className="space-y-4">
+                            {currentExercises.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-zinc-600 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20 mt-4">
+                                    <Dumbbell className="w-12 h-12 mb-3 opacity-20" /><p className="text-sm">No hay registros</p>
+                                    <button onClick={() => handleExercisesChange([...currentExercises, { id: generateId(), name: '', sets: [{ weight: '', reps: '' }] }])} 
+                                        className="mt-4 px-5 py-2 bg-zinc-100 text-zinc-950 rounded-full text-sm font-bold hover:scale-105 transition-transform">Comenzar Rutina</button>
+                                </div>
+                            ) : (
+                                <>
+                                    {currentExercises.map(ex => <ExerciseCard key={ex.id} exercise={ex} onUpdate={updated => handleExercisesChange(currentExercises.map(e => e.id === updated.id ? updated : e))} onDelete={() => handleExercisesChange(currentExercises.filter(e => e.id !== ex.id))} />)}
+                                    <button onClick={() => handleExercisesChange([...currentExercises, { id: generateId(), name: '', sets: [{ weight: '', reps: '' }] }])} 
+                                        className="w-full py-4 border-2 border-dashed border-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center gap-2 hover:border-zinc-700 hover:text-zinc-300 hover:bg-zinc-900/30 transition-all"><Plus size={16} /><span className="font-medium text-sm">Agregar ejercicio</span></button>
+                                </>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
