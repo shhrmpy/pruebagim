@@ -7,7 +7,7 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#09090b">
+    <meta name="theme-color" content="#101724">
     <meta name="mobile-web-app-capable" content="yes">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,7 +15,7 @@
     
     <style>
         body { 
-            background-color: #09090b; 
+            background-color: #101724; 
             color: #e4e4e7; 
             overscroll-behavior-y: none;
             -webkit-tap-highlight-color: transparent;
@@ -26,6 +26,11 @@
         .animate-in { animation: fadeIn 0.3s ease-out; }
         .slide-in { animation: slideIn 0.3s ease-out; }
         .fade-in { animation: fadeIn 0.2s ease-out; }
+        
+        .mask-gradient-bottom {
+            mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+        }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
@@ -44,7 +49,7 @@
             Calendar, CheckCircle2, TrendingUp, Save, Menu, 
             BarChart3, Settings, LogOut, Book, Timer, Clock, 
             Play, Pause, RotateCcw, Hourglass, Trophy, Activity, CalendarDays,
-            Pencil
+            Pencil, Flag
         } from 'https://esm.sh/lucide-react@0.344.0';
 
         // --- Utilidades ---
@@ -60,7 +65,7 @@
 
         // --- Componentes de UI Generales ---
         const LoadingScreen = () => (
-            <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-400 gap-4">
+            <div className="min-h-screen bg-[#101724] flex flex-col items-center justify-center text-zinc-400 gap-4">
                 <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
                 <p className="text-sm font-medium animate-pulse">Cargando GymTracker...</p>
             </div>
@@ -70,7 +75,8 @@
         const StopwatchMode = () => {
             const [time, setTime] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
-            
+            const [laps, setLaps] = useState([]); 
+
             useEffect(() => {
                 let interval;
                 if (isRunning) {
@@ -89,21 +95,58 @@
                 return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
             };
 
+            const handleLap = () => {
+                const previousSplit = laps.length > 0 ? laps[0].rawSplit : 0;
+                const lapTime = time - previousSplit;
+                setLaps([{ id: laps.length + 1, rawSplit: time, split: format(time), lap: format(lapTime) }, ...laps]);
+            };
+
+            const handleReset = () => {
+                setIsRunning(false);
+                setTime(0);
+                setLaps([]);
+            };
+
+            const handleLeftButton = () => {
+                if (isRunning) {
+                    handleLap();
+                } else {
+                    handleReset();
+                }
+            };
+
             return (
-                <div className="flex flex-col items-center w-full max-w-xs animate-in py-4">
-                    <div className="w-64 h-64 rounded-full border-4 border-zinc-800 flex items-center justify-center mb-8 relative bg-zinc-900/30 shadow-inner">
+                <div className="flex flex-col items-center w-full max-w-xs animate-in py-4 h-full">
+                    <div className="w-64 h-64 shrink-0 rounded-full border-4 border-[#1e293b] flex items-center justify-center mb-6 relative bg-[#151b2b] shadow-inner">
                         <span className="text-5xl font-mono font-bold text-blue-400 tracking-wider tabular-nums">
                             {format(time)}
                         </span>
                     </div>
-                    <div className="flex gap-4 w-full">
-                        <button onClick={() => { setIsRunning(false); setTime(0); }} className="flex-1 py-4 rounded-2xl bg-zinc-900 text-zinc-400 font-medium active:scale-95 transition-all">
-                            <RotateCcw className="mx-auto mb-1" size={20}/> Reset
+                    <div className="flex gap-4 w-full mb-6 shrink-0">
+                        <button onClick={handleLeftButton} disabled={!isRunning && time === 0}
+                            className={`flex-1 py-4 rounded-2xl font-medium active:scale-95 transition-all flex flex-col items-center justify-center gap-1 ${!isRunning && time === 0 ? 'opacity-50 cursor-not-allowed bg-[#151b2b] text-zinc-500' : 'bg-[#1e293b] text-zinc-300 hover:bg-[#334155]'}`}>
+                            {isRunning ? <Flag size={20}/> : <RotateCcw size={20}/>}
+                            <span className="text-xs uppercase font-bold tracking-wider">{isRunning ? 'Vuelta' : 'Reset'}</span>
                         </button>
-                        <button onClick={() => setIsRunning(!isRunning)} className={`flex-1 py-4 rounded-2xl font-bold text-zinc-950 active:scale-95 transition-all ${isRunning ? 'bg-red-500 hover:bg-red-400' : 'bg-blue-500 hover:bg-blue-400'}`}>
-                            {isRunning ? <Pause className="mx-auto mb-1" size={24}/> : <Play className="mx-auto mb-1" size={24}/>}
-                            {isRunning ? 'Pausar' : 'Iniciar'}
+                        <button onClick={() => setIsRunning(!isRunning)} 
+                            className={`flex-1 py-4 rounded-2xl font-bold text-[#101724] active:scale-95 transition-all flex flex-col items-center justify-center gap-1 ${isRunning ? 'bg-red-500 hover:bg-red-400' : 'bg-green-500 hover:bg-green-400'}`}>
+                            {isRunning ? <Pause size={24}/> : <Play size={24}/>}
+                            <span className="text-xs uppercase font-bold tracking-wider">{isRunning ? 'Pausar' : 'Iniciar'}</span>
                         </button>
+                    </div>
+                    <div className="w-full flex-1 overflow-y-auto px-2 space-y-2 pb-4 mask-gradient-bottom">
+                        {laps.length > 0 && (
+                            <div className="grid grid-cols-3 text-[10px] text-zinc-500 uppercase font-bold border-b border-[#1e293b] pb-2 mb-2 px-2">
+                                <span># Vuelta</span><span className="text-center">Tiempo Vuelta</span><span className="text-right">Total</span>
+                            </div>
+                        )}
+                        {laps.map((lap) => (
+                            <div key={lap.id} className="grid grid-cols-3 text-sm text-zinc-300 py-2 border-b border-[#1e293b]/50 items-center px-2 animate-in">
+                                <span className="text-zinc-500 font-mono">#{lap.id}</span>
+                                <span className="text-center font-mono font-bold text-white">{lap.lap}</span>
+                                <span className="text-right font-mono text-zinc-400">{lap.split}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             );
@@ -143,7 +186,7 @@
 
             return (
                 <div className="flex flex-col items-center w-full max-w-xs animate-in py-4">
-                    <div className="w-64 h-64 rounded-full border-4 border-zinc-800 flex items-center justify-center mb-6 relative bg-zinc-900/30 overflow-hidden">
+                    <div className="w-64 h-64 rounded-full border-4 border-[#1e293b] flex items-center justify-center mb-6 relative bg-[#151b2b] overflow-hidden">
                         <div className="absolute bottom-0 left-0 right-0 bg-blue-500/20 transition-all duration-1000 ease-linear" style={{ height: `${progress}%` }}></div>
                         <div className="z-10 text-center">
                              <span className={`text-6xl font-mono font-bold tracking-wider tabular-nums ${timeLeft === 0 && initialTime > 0 ? 'text-green-500 animate-pulse' : 'text-white'}`}>
@@ -153,15 +196,15 @@
                         </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 w-full mb-4">
-                        <button onClick={() => addTime(30)} className="py-2 bg-zinc-800 rounded-lg text-xs font-semibold hover:bg-zinc-700 transition-colors">+30s</button>
-                        <button onClick={() => addTime(60)} className="py-2 bg-zinc-800 rounded-lg text-xs font-semibold hover:bg-zinc-700 transition-colors">+1m</button>
-                        <button onClick={() => addTime(120)} className="py-2 bg-zinc-800 rounded-lg text-xs font-semibold hover:bg-zinc-700 transition-colors">+2m</button>
+                        <button onClick={() => addTime(30)} className="py-2 bg-[#1e293b] rounded-lg text-xs font-semibold hover:bg-[#334155] transition-colors">+30s</button>
+                        <button onClick={() => addTime(60)} className="py-2 bg-[#1e293b] rounded-lg text-xs font-semibold hover:bg-[#334155] transition-colors">+1m</button>
+                        <button onClick={() => addTime(120)} className="py-2 bg-[#1e293b] rounded-lg text-xs font-semibold hover:bg-[#334155] transition-colors">+2m</button>
                     </div>
                     <div className="flex gap-4 w-full">
-                        <button onClick={() => { setIsActive(false); setTimeLeft(0); setInitialTime(0); }} className="flex-1 py-4 rounded-2xl bg-zinc-900 text-zinc-400 font-medium active:scale-95 transition-all">
+                        <button onClick={() => { setIsActive(false); setTimeLeft(0); setInitialTime(0); }} className="flex-1 py-4 rounded-2xl bg-[#1e293b] text-zinc-400 font-medium active:scale-95 transition-all">
                             <RotateCcw className="mx-auto mb-1" size={20}/> Reset
                         </button>
-                        <button onClick={() => setIsActive(!isActive)} disabled={timeLeft === 0} className={`flex-1 py-4 rounded-2xl font-bold text-zinc-950 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isActive ? 'bg-amber-500' : 'bg-green-500'}`}>
+                        <button onClick={() => setIsActive(!isActive)} disabled={timeLeft === 0} className={`flex-1 py-4 rounded-2xl font-bold text-[#101724] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isActive ? 'bg-amber-500' : 'bg-green-500'}`}>
                             {isActive ? <Pause className="mx-auto mb-1" size={24}/> : <Play className="mx-auto mb-1" size={24}/>}
                             {isActive ? 'Pausar' : 'Iniciar'}
                         </button>
@@ -176,20 +219,68 @@
                 const timer = setInterval(() => setTime(new Date()), 1000);
                 return () => clearInterval(timer);
             }, []);
+
+            // Cálculos para las manecillas
+            const seconds = time.getSeconds();
+            const minutes = time.getMinutes();
+            const hours = time.getHours();
+
+            const secondDeg = seconds * 6;
+            const minuteDeg = minutes * 6 + seconds * 0.1;
+            const hourDeg = (hours % 12) * 30 + minutes * 0.5;
+
             return (
-                <div className="flex flex-col items-center justify-center w-full h-full animate-in text-center px-4 overflow-hidden">
-                    {/* Hora Ajustada: Tamaño más seguro (5xl/7xl) y tracking ajustado para que quepa */}
-                    <div className="text-5xl sm:text-7xl font-bold text-white font-mono tracking-tighter tabular-nums leading-none drop-shadow-2xl whitespace-nowrap">
-                        {time.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', hour12: true})}
+                <div className="flex flex-col items-center justify-center w-full h-full animate-in text-center px-4 overflow-hidden py-6">
+                    {/* RELOJ ANALÓGICO SVG */}
+                    <div className="relative w-64 h-64 sm:w-72 sm:h-72 mb-8 drop-shadow-2xl">
+                        <svg viewBox="0 0 200 200" className="w-full h-full">
+                            {/* Fondo */}
+                            <circle cx="100" cy="100" r="95" fill="#151b2b" stroke="#1e293b" strokeWidth="2" />
+                            
+                            {/* Marcas de Hora (Ticks) */}
+                            {[...Array(60)].map((_, i) => {
+                                const isHour = i % 5 === 0;
+                                return (
+                                    <line
+                                        key={i}
+                                        x1="100" y1={isHour ? "15" : "18"}
+                                        x2="100" y2={isHour ? "25" : "20"}
+                                        stroke={isHour ? "#e4e4e7" : "#4a5568"}
+                                        strokeWidth={isHour ? "3" : "1"}
+                                        transform={`rotate(${i * 6} 100 100)`}
+                                    />
+                                );
+                            })}
+
+                            {/* Agujas */}
+                            {/* Hora */}
+                            <line x1="100" y1="100" x2="100" y2="50" stroke="#e4e4e7" strokeWidth="6" strokeLinecap="round" transform={`rotate(${hourDeg} 100 100)`} />
+                            {/* Minuto */}
+                            <line x1="100" y1="100" x2="100" y2="35" stroke="#a1a1aa" strokeWidth="4" strokeLinecap="round" transform={`rotate(${minuteDeg} 100 100)`} />
+                            {/* Segundo */}
+                            <line x1="100" y1="115" x2="100" y2="25" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" transform={`rotate(${secondDeg} 100 100)`} />
+                            
+                            {/* Punto Central */}
+                            <circle cx="100" cy="100" r="4" fill="#3b82f6" />
+                            <circle cx="100" cy="100" r="2" fill="#151b2b" />
+                        </svg>
+                        
+                        {/* Indicador AM/PM discreto */}
+                         <div className="absolute bottom-[28%] left-0 right-0 text-center">
+                            <span className="text-zinc-500 font-mono text-xs font-bold tracking-widest">{time.getHours() >= 12 ? 'PM' : 'AM'}</span>
+                        </div>
                     </div>
                     
-                    {/* Día de la semana */}
-                    <div className="text-blue-500 font-black text-2xl sm:text-4xl uppercase tracking-[0.2em] mt-6 mb-2">
+                    {/* Hora Digital Secundaria */}
+                    <div className="text-3xl font-bold text-white font-mono tracking-tight tabular-nums leading-none mb-1">
+                        {time.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}
+                    </div>
+
+                    {/* Fecha */}
+                    <div className="text-blue-500 font-bold text-sm uppercase tracking-widest mb-1">
                         {time.toLocaleDateString('es-ES', {weekday: 'long'})}
                     </div>
-                    
-                    {/* Fecha completa */}
-                    <div className="text-zinc-500 text-lg sm:text-xl font-medium">
+                    <div className="text-zinc-500 text-xs font-medium">
                         {time.toLocaleDateString('es-ES', {day: 'numeric', month: 'long', year: 'numeric'})}
                     </div>
                 </div>
@@ -199,19 +290,19 @@
         const TimeToolsView = () => {
             const [mode, setMode] = useState('stopwatch'); 
             return (
-                <div className="flex flex-col h-full animate-in">
-                    <div className="flex p-1 bg-zinc-900 rounded-xl mb-2 mx-2 border border-zinc-800/50">
-                        <button onClick={() => setMode('stopwatch')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${mode === 'stopwatch' ? 'bg-zinc-800 text-blue-400 shadow-lg' : 'text-zinc-500'}`}>
+                <div className="flex flex-col h-full animate-in overflow-hidden">
+                    <div className="flex p-1 bg-[#151b2b] rounded-xl mb-2 mx-2 border border-[#1e293b]/50 shrink-0">
+                        <button onClick={() => setMode('stopwatch')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${mode === 'stopwatch' ? 'bg-[#1e293b] text-blue-400 shadow-lg' : 'text-zinc-500'}`}>
                             <Timer size={14} /> CRONO
                         </button>
-                        <button onClick={() => setMode('timer')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${mode === 'timer' ? 'bg-zinc-800 text-green-400 shadow-lg' : 'text-zinc-500'}`}>
+                        <button onClick={() => setMode('timer')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${mode === 'timer' ? 'bg-[#1e293b] text-green-400 shadow-lg' : 'text-zinc-500'}`}>
                             <Hourglass size={14} /> TEMP
                         </button>
-                        <button onClick={() => setMode('clock')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${mode === 'clock' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500'}`}>
+                        <button onClick={() => setMode('clock')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${mode === 'clock' ? 'bg-[#1e293b] text-white shadow-lg' : 'text-zinc-500'}`}>
                             <Clock size={14} /> RELOJ
                         </button>
                     </div>
-                    <div className="flex-1 flex flex-col items-center justify-center p-4 bg-zinc-950">
+                    <div className="flex-1 flex flex-col items-center p-4 bg-[#101724] overflow-hidden">
                         {mode === 'clock' && <ClockMode />}
                         {mode === 'stopwatch' && <StopwatchMode />}
                         {mode === 'timer' && <TimerMode />}
@@ -227,27 +318,27 @@
             return (
                 <div className="fixed inset-0 z-[60] flex">
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm fade-in" onClick={onClose}></div>
-                    <div className="relative w-64 bg-zinc-900 h-full shadow-2xl border-r border-zinc-800 flex flex-col slide-in">
-                        <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+                    <div className="relative w-64 bg-[#101724] h-full shadow-2xl border-r border-[#1e293b] flex flex-col slide-in">
+                        <div className="p-6 border-b border-[#1e293b] flex items-center justify-between">
                             <h2 className="text-xl font-bold text-white">Menú</h2>
-                            <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full transition-colors"><X size={20} className="text-zinc-400" /></button>
+                            <button onClick={onClose} className="p-2 hover:bg-[#1e293b] rounded-full transition-colors"><X size={20} className="text-zinc-400" /></button>
                         </div>
                         <nav className="flex-1 p-4 space-y-2">
-                            <button onClick={() => { onViewChange('tracker'); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === 'tracker' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'}`}>
+                            <button onClick={() => { onViewChange('tracker'); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === 'tracker' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-zinc-400 hover:bg-[#1e293b] hover:text-zinc-100'}`}>
                                 <Book size={20} /> <span className="font-medium">Diario</span>
                             </button>
-                            <button onClick={() => { onViewChange('time'); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === 'time' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'}`}>
+                            <button onClick={() => { onViewChange('time'); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === 'time' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-zinc-400 hover:bg-[#1e293b] hover:text-zinc-100'}`}>
                                 <Timer size={20} /> <span className="font-medium">Tiempo</span>
                             </button>
-                            <button onClick={() => { onViewChange('stats'); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === 'stats' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'}`}>
+                            <button onClick={() => { onViewChange('stats'); onClose(); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === 'stats' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-zinc-400 hover:bg-[#1e293b] hover:text-zinc-100'}`}>
                                 <BarChart3 size={20} /> <span className="font-medium">Estadísticas</span>
                             </button>
-                            <div className="my-4 border-t border-zinc-800"></div>
+                            <div className="my-4 border-t border-[#1e293b]"></div>
                             <button onClick={() => { if(confirm('¿Borrar todo?')) { onResetData(); onClose(); } }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all">
                                 <Trash2 size={20} /> <span className="font-medium">Borrar Todo</span>
                             </button>
                         </nav>
-                        <div className="p-6 border-t border-zinc-800"><p className="text-xs text-center text-zinc-600">GymTracker v1.5</p></div>
+                        <div className="p-6 border-t border-[#1e293b]"><p className="text-xs text-center text-zinc-600">GymTracker v1.9</p></div>
                     </div>
                 </div>
             );
@@ -255,18 +346,18 @@
 
         const SetRow = ({ set, index, onChange, onRemove }) => (
             <div className="flex items-center gap-3 mb-2 animate-in">
-                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-500 font-mono">{index + 1}</div>
+                <div className="w-6 h-6 rounded-full bg-[#1e293b] flex items-center justify-center text-[10px] text-zinc-400 font-mono">{index + 1}</div>
                 <div className="grid grid-cols-2 gap-2 flex-1">
                     <div className="relative group">
-                        <input type="number" value={set.weight} onChange={(e) => onChange(index, 'weight', e.target.value)} placeholder="0" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:border-blue-500/50 focus:bg-zinc-900 focus:outline-none transition-all placeholder-zinc-700 text-center" />
+                        <input type="number" value={set.weight} onChange={(e) => onChange(index, 'weight', e.target.value)} placeholder="0" className="w-full bg-[#101724] border border-[#1e293b] rounded-lg px-3 py-2 text-zinc-100 text-sm focus:border-blue-500/50 focus:bg-[#1e293b] focus:outline-none transition-all placeholder-zinc-600 text-center" />
                         <span className="absolute right-2 top-2.5 text-[10px] text-zinc-600 pointer-events-none">KG</span>
                     </div>
                     <div className="relative group">
-                        <input type="number" value={set.reps} onChange={(e) => onChange(index, 'reps', e.target.value)} placeholder="0" className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:border-green-500/50 focus:bg-zinc-900 focus:outline-none transition-all placeholder-zinc-700 text-center" />
+                        <input type="number" value={set.reps} onChange={(e) => onChange(index, 'reps', e.target.value)} placeholder="0" className="w-full bg-[#101724] border border-[#1e293b] rounded-lg px-3 py-2 text-zinc-100 text-sm focus:border-green-500/50 focus:bg-[#1e293b] focus:outline-none transition-all placeholder-zinc-600 text-center" />
                         <span className="absolute right-2 top-2.5 text-[10px] text-zinc-600 pointer-events-none">REPS</span>
                     </div>
                 </div>
-                <button onClick={() => onRemove(index)} className="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"><X size={14} /></button>
+                <button onClick={() => onRemove(index)} className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"><X size={14} /></button>
             </div>
         );
 
@@ -287,11 +378,11 @@
             };
 
             return (
-                <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4 mb-4 backdrop-blur-sm">
-                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-zinc-800/50">
-                        <input type="text" value={exercise.name} onChange={(e) => onUpdate({ ...exercise, name: e.target.value })} placeholder="Nombre del ejercicio..." className="bg-transparent text-lg font-bold text-zinc-100 placeholder-zinc-600 focus:outline-none w-full mr-2" />
+                <div className="bg-[#151b2b] border border-[#1e293b] rounded-2xl p-4 mb-4 backdrop-blur-sm">
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-[#1e293b]/50">
+                        <input type="text" value={exercise.name} onChange={(e) => onUpdate({ ...exercise, name: e.target.value })} placeholder="Nombre del ejercicio..." className="bg-transparent text-lg font-bold text-zinc-100 placeholder-zinc-500 focus:outline-none w-full mr-2" />
                         <div className="flex items-center gap-2">
-                            <button onClick={onDelete} className="p-1.5 text-zinc-500 hover:text-red-500 transition-colors rounded-md hover:bg-zinc-800"><Trash2 size={16} /></button>
+                            <button onClick={onDelete} className="p-1.5 text-zinc-500 hover:text-red-500 transition-colors rounded-md hover:bg-[#1e293b]"><Trash2 size={16} /></button>
                         </div>
                     </div>
                     <div className="space-y-1">{(exercise.sets || []).map((set, idx) => <SetRow key={idx} set={set} index={idx} onChange={updateSet} onRemove={removeSet} />)}</div>
@@ -336,20 +427,20 @@
                 <div className="animate-in space-y-4">
                     <h3 className="text-xl font-bold text-white mb-4 px-2">Tu Progreso</h3>
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800 flex flex-col justify-between h-32">
+                        <div className="bg-[#151b2b] p-4 rounded-2xl border border-[#1e293b] flex flex-col justify-between h-32">
                             <div className="p-2 bg-blue-500/10 w-fit rounded-lg text-blue-400 mb-2"><Activity size={20} /></div>
-                            <div><p className="text-2xl font-bold text-white">{stats.totalWorkouts}</p><p className="text-xs text-zinc-500 font-medium uppercase">Entrenamientos</p></div>
+                            <div><p className="text-2xl font-bold text-white">{stats.totalWorkouts}</p><p className="text-xs text-zinc-400 font-medium uppercase">Entrenamientos</p></div>
                         </div>
-                        <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800 flex flex-col justify-between h-32">
+                        <div className="bg-[#151b2b] p-4 rounded-2xl border border-[#1e293b] flex flex-col justify-between h-32">
                             <div className="p-2 bg-green-500/10 w-fit rounded-lg text-green-400 mb-2"><TrendingUp size={20} /></div>
-                            <div><p className="text-2xl font-bold text-white">{(stats.totalVolume / 1000).toFixed(1)}k</p><p className="text-xs text-zinc-500 font-medium uppercase">Toneladas Movidas</p></div>
+                            <div><p className="text-2xl font-bold text-white">{(stats.totalVolume / 1000).toFixed(1)}k</p><p className="text-xs text-zinc-400 font-medium uppercase">Toneladas Movidas</p></div>
                         </div>
                     </div>
-                    <div className="bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
-                        <div className="flex items-center gap-3 mb-3"><div className="p-2 bg-amber-500/10 rounded-lg text-amber-400"><Trophy size={20} /></div><div><p className="text-sm text-zinc-400 font-medium">Mejor Sesión</p><p className="text-xs text-zinc-600">Día con más volumen</p></div></div>
-                        <div className="flex items-end justify-between border-t border-zinc-800/50 pt-3"><p className="text-lg font-bold text-white">{stats.busiestDay === 'Ninguno' ? '--' : new Date(stats.busiestDay).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p><p className="text-sm font-mono text-amber-500">{stats.busiestVolume.toLocaleString()} kg</p></div>
+                    <div className="bg-[#151b2b] p-5 rounded-2xl border border-[#1e293b]">
+                        <div className="flex items-center gap-3 mb-3"><div className="p-2 bg-amber-500/10 rounded-lg text-amber-400"><Trophy size={20} /></div><div><p className="text-sm text-zinc-300 font-medium">Mejor Sesión</p><p className="text-xs text-zinc-500">Día con más volumen</p></div></div>
+                        <div className="flex items-end justify-between border-t border-[#1e293b]/50 pt-3"><p className="text-lg font-bold text-white">{stats.busiestDay === 'Ninguno' ? '--' : new Date(stats.busiestDay).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p><p className="text-sm font-mono text-amber-500">{stats.busiestVolume.toLocaleString()} kg</p></div>
                     </div>
-                    <div className="bg-zinc-900/30 p-4 rounded-xl border border-dashed border-zinc-800 text-center mt-6"><p className="text-xs text-zinc-600">Más gráficas próximamente...</p></div>
+                    <div className="bg-[#151b2b] p-4 rounded-xl border border-dashed border-[#1e293b] text-center mt-6"><p className="text-xs text-zinc-500">Más gráficas próximamente...</p></div>
                 </div>
             );
         };
@@ -401,7 +492,6 @@
                 const dateKey = formatDateId(selectedDate);
                 let updatedLogs;
                 
-                // Solo borramos si NO hay ejercicios Y NO hay nombre. Si hay nombre, se mantiene el log.
                 if (newExercises.length === 0 && !currentRoutineName) {
                     updatedLogs = { ...workoutLogs };
                     delete updatedLogs[dateKey];
@@ -418,7 +508,6 @@
                 const dateKey = formatDateId(selectedDate);
                 let updatedLogs;
                 
-                // Si borramos el nombre y no hay ejercicios, borramos el log
                 if (!newName && currentExercises.length === 0) {
                      updatedLogs = { ...workoutLogs };
                      delete updatedLogs[dateKey];
@@ -441,14 +530,14 @@
 
                 return (
                     <div className="grid grid-cols-7 gap-1 text-center mb-6">
-                        {daysOfWeek.map((d, i) => <div key={i} className="text-[10px] font-bold text-zinc-600 uppercase py-2">{d}</div>)}
+                        {daysOfWeek.map((d, i) => <div key={i} className="text-[10px] font-bold text-zinc-500 uppercase py-2">{d}</div>)}
                         {blanks.map((_, i) => <div key={`b-${i}`} />)}
                         {days.map(day => {
                             const date = new Date(year, month, day);
                             const key = formatDateId(date), isSel = formatDateId(selectedDate) === key;
-                            const isToday = formatDateId(new Date()) === key, hasData = workoutLogs[key]; // Si hay log, hay punto
+                            const isToday = formatDateId(new Date()) === key, hasData = workoutLogs[key];
                             return (
-                                <button key={day} onClick={() => { setSelectedDate(date); }} className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all duration-300 ${isSel ? 'bg-blue-600 text-white shadow-lg scale-105 z-10' : 'text-zinc-400 hover:bg-zinc-900'} ${isToday && !isSel ? 'border border-blue-500/30 text-blue-400' : ''}`}>
+                                <button key={day} onClick={() => { setSelectedDate(date); }} className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all duration-300 ${isSel ? 'bg-blue-600 text-white shadow-lg scale-105 z-10' : 'text-zinc-400 hover:bg-[#151b2b]'} ${isToday && !isSel ? 'border border-blue-500/30 text-blue-400' : ''}`}>
                                     <span className={`text-sm ${isSel ? 'font-bold' : 'font-medium'}`}>{day}</span>
                                     {hasData && <span className={`absolute bottom-1.5 w-1 h-1 rounded-full ${isSel ? 'bg-white' : 'bg-blue-500'}`} />}
                                 </button>
@@ -460,26 +549,25 @@
 
             if (loading) return <LoadingScreen />;
 
-            // Helper para saber si hay sesión activa (ejercicios > 0 O nombre existe)
             const hasActiveSession = currentExercises.length > 0 || currentRoutineName !== '';
 
             return (
-                <div className="max-w-md mx-auto min-h-screen flex flex-col border-x border-zinc-900/50 shadow-2xl bg-zinc-950 relative overflow-hidden">
-                    <header className="px-4 py-4 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-900 sticky top-0 z-50 flex items-center justify-between">
+                <div className="max-w-md mx-auto min-h-screen flex flex-col border-x border-[#1e293b]/50 shadow-2xl bg-[#101724] relative overflow-hidden">
+                    <header className="px-4 py-4 bg-[#101724]/90 backdrop-blur-xl border-b border-[#1e293b] sticky top-0 z-50 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <button onClick={() => setIsMenuOpen(true)} className="p-2 -ml-2 hover:bg-zinc-900 rounded-full transition-colors text-zinc-400 hover:text-white"><Menu size={24} /></button>
+                            <button onClick={() => setIsMenuOpen(true)} className="p-2 -ml-2 hover:bg-[#1e293b] rounded-full transition-colors text-zinc-400 hover:text-white"><Menu size={24} /></button>
                             <div>
                                 <h1 className="text-lg font-bold text-white leading-tight">GymTracker</h1>
-                                <p className="text-[10px] text-zinc-500 uppercase font-semibold">
+                                <p className="text-[10px] text-zinc-400 uppercase font-semibold">
                                     {view === 'tracker' ? 'Modo Diario' : view === 'stats' ? 'Estadísticas' : 'Herramientas'}
                                 </p>
                             </div>
                         </div>
                         {view === 'tracker' && (
-                            <div className="flex items-center gap-1 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800">
-                                <button onClick={handlePrevMonth} className="p-1.5 hover:text-white text-zinc-500"><ChevronLeft size={16} /></button>
+                            <div className="flex items-center gap-1 bg-[#151b2b] p-1 rounded-lg border border-[#1e293b]">
+                                <button onClick={handlePrevMonth} className="p-1.5 hover:text-white text-zinc-400"><ChevronLeft size={16} /></button>
                                 <span className="text-xs font-medium w-16 text-center text-zinc-300">{months[viewDate.getMonth()].substring(0, 3)}</span>
-                                <button onClick={handleNextMonth} className="p-1.5 hover:text-white text-zinc-500"><ChevronRight size={16} /></button>
+                                <button onClick={handleNextMonth} className="p-1.5 hover:text-white text-zinc-400"><ChevronRight size={16} /></button>
                             </div>
                         )}
                     </header>
@@ -487,33 +575,32 @@
                     <main className="flex-1 p-4 overflow-y-auto pb-20 scroll-smooth">
                         {view === 'stats' ? <StatsView logs={workoutLogs} /> : view === 'time' ? <TimeToolsView /> : (
                             <div className="animate-in">
-                                <div className="bg-zinc-900/20 p-2 rounded-3xl mb-6">{renderCalendar()}</div>
+                                <div className="bg-[#151b2b]/50 p-2 rounded-3xl mb-6">{renderCalendar()}</div>
                                 <div className="flex items-end justify-between px-2 mb-4">
                                     <div><h2 className="text-2xl font-bold text-white capitalize">{selectedDate.toLocaleDateString('es-ES', { weekday: 'long' })}</h2><p className="text-zinc-500 text-sm capitalize">{selectedDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p></div>
                                     {isSyncing ? <span className="text-[10px] text-blue-500 animate-pulse flex items-center gap-1"><Save size={10} /> Guardando...</span> : <span className="text-[10px] text-green-500 flex items-center gap-1"><CheckCircle2 size={12} /> Guardado</span>}
                                 </div>
                                 <div className="space-y-4">
                                     {!hasActiveSession ? (
-                                        <div className="flex flex-col items-center justify-center py-12 text-zinc-600 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20 mt-4">
+                                        <div className="flex flex-col items-center justify-center py-12 text-zinc-500 border border-dashed border-[#1e293b] rounded-2xl bg-[#151b2b]/50 mt-4">
                                             <Dumbbell className="w-12 h-12 mb-3 opacity-20" /><p className="text-sm">No hay registros</p>
-                                            <button onClick={() => handleExercisesChange([...currentExercises, { id: generateId(), name: '', sets: [{ weight: '', reps: '' }] }])} className="mt-4 px-5 py-2 bg-zinc-100 text-zinc-950 rounded-full text-sm font-bold hover:scale-105 transition-transform">Comenzar Rutina</button>
+                                            <button onClick={() => handleExercisesChange([...currentExercises, { id: generateId(), name: '', sets: [{ weight: '', reps: '' }] }])} className="mt-4 px-5 py-2 bg-zinc-100 text-[#101724] rounded-full text-sm font-bold hover:scale-105 transition-transform">Comenzar Rutina</button>
                                         </div>
                                     ) : (
                                         <>
-                                            {/* INPUT DE NOMBRE DE RUTINA */}
                                             <div className="relative group mb-6">
                                                 <input 
                                                     type="text" 
                                                     value={currentRoutineName}
                                                     onChange={(e) => handleNameChange(e.target.value)}
                                                     placeholder="Nombre de la rutina (ej. Pecho y Bíceps)"
-                                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-10 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium"
+                                                    className="w-full bg-[#151b2b] border border-[#1e293b] rounded-xl px-10 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium"
                                                 />
                                                 <Pencil className="absolute left-3 top-3.5 text-zinc-500 pointer-events-none" size={16} />
                                             </div>
 
                                             {currentExercises.map(ex => <ExerciseCard key={ex.id} exercise={ex} onUpdate={updated => handleExercisesChange(currentExercises.map(e => e.id === updated.id ? updated : e))} onDelete={() => handleExercisesChange(currentExercises.filter(e => e.id !== ex.id))} />)}
-                                            <button onClick={() => handleExercisesChange([...currentExercises, { id: generateId(), name: '', sets: [{ weight: '', reps: '' }] }])} className="w-full py-4 border-2 border-dashed border-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center gap-2 hover:border-zinc-700 hover:text-zinc-300 hover:bg-zinc-900/30 transition-all"><Plus size={16} /><span className="font-medium text-sm">Agregar ejercicio</span></button>
+                                            <button onClick={() => handleExercisesChange([...currentExercises, { id: generateId(), name: '', sets: [{ weight: '', reps: '' }] }])} className="w-full py-4 border-2 border-dashed border-[#1e293b] text-zinc-500 rounded-2xl flex items-center justify-center gap-2 hover:border-zinc-500 hover:text-zinc-300 hover:bg-[#151b2b] transition-all"><Plus size={16} /><span className="font-medium text-sm">Agregar ejercicio</span></button>
                                         </>
                                     )}
                                 </div>
@@ -528,4 +615,3 @@
     </script>
 </body>
 </html>
-
