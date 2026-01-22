@@ -2,51 +2,51 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport ajustado para que no haga zoom en movil y se sienta como app nativa -->
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GymTracker - Diario Local</title>
     
-    <!-- Metaetiquetas para que parezca una App Nativa al añadir a pantalla de inicio -->
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#09090b">
     <meta name="mobile-web-app-capable" content="yes">
     
-    <!-- Tailwind CSS -->
+   
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Babel para traducir JSX en el navegador -->
+    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Estilos personalizados -->
+    
     <style>
         body { 
             background-color: #09090b; 
             color: #e4e4e7; 
-            overscroll-behavior-y: none; /* Evita el rebote de scroll en movil */
-            -webkit-tap-highlight-color: transparent; /* Quita el flash azul al tocar en movil */
+            overscroll-behavior-y: none; 
+            -webkit-tap-highlight-color: transparent; 
         }
-        /* Ocultar scrollbar pero permitir scroll */
+        
         ::-webkit-scrollbar { display: none; }
         * { -ms-overflow-style: none; scrollbar-width: none; }
         .animate-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Ajustes específicos para inputs en iOS para evitar zoom automático */
+        
         input[type="number"] { font-size: 16px; } 
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- Script Principal -->
+    
     <script type="text/babel" data-type="module">
-        // Importaciones simplificadas (ya no necesitamos Firebase)
+        
         import React, { useState, useEffect, useRef } from 'https://esm.sh/react@18.2.0';
         import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
         import { ChevronLeft, ChevronRight, Plus, Trash2, Dumbbell, X, Calendar, CheckCircle2, TrendingUp, Save } from 'https://esm.sh/lucide-react@0.344.0';
 
-        // --- Utilidades ---
+       
         const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         const daysOfWeek = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
         
@@ -58,7 +58,7 @@
         };
         const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
-        // --- Componentes ---
+        
 
         const LoadingScreen = () => (
             <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-400 gap-4">
@@ -130,7 +130,7 @@
             const [isSyncing, setIsSyncing] = useState(false);
             const saveTimeoutRef = useRef(null);
 
-            // Cargar datos desde localStorage al iniciar
+            
             useEffect(() => {
                 const loadData = () => {
                     try {
@@ -144,11 +144,11 @@
                         setLoading(false);
                     }
                 };
-                // Pequeño delay artificial para que se vea la pantalla de carga (opcional)
+                
                 setTimeout(loadData, 500);
             }, []);
 
-            // Actualizar vista cuando cambia el día seleccionado o los logs globales
+            
             useEffect(() => {
                 const dateKey = formatDateId(selectedDate);
                 if (workoutLogs[dateKey]) {
@@ -158,14 +158,14 @@
                 }
             }, [selectedDate, workoutLogs]);
 
-            // Guardar en localStorage
+            
             const saveLocal = (newLogs) => {
                 setIsSyncing(true);
                 try {
                     localStorage.setItem('gym_tracker_data', JSON.stringify(newLogs));
-                    setWorkoutLogs(newLogs); // Actualizar estado global
+                    setWorkoutLogs(newLogs); 
                     
-                    // Simular un pequeño tiempo de guardado para feedback visual
+                    
                     setTimeout(() => setIsSyncing(false), 600);
                 } catch (e) {
                     console.error("Error guardando:", e);
@@ -175,12 +175,11 @@
             };
 
             const handleExercisesChange = (newExercises) => {
-                setCurrentExercises(newExercises); // Actualizar UI inmediatamente
+                setCurrentExercises(newExercises); 
                 
                 const dateKey = formatDateId(selectedDate);
                 
-                // Preparar nuevo objeto de logs
-                // Si no hay ejercicios, eliminamos la entrada para limpiar datos
+
                 let updatedLogs;
                 if (newExercises.length === 0) {
                     updatedLogs = { ...workoutLogs };
@@ -196,7 +195,7 @@
                     };
                 }
 
-                // Debounce para no guardar a cada tecla pulsada
+                
                 if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
                 saveTimeoutRef.current = setTimeout(() => {
                     saveLocal(updatedLogs);
@@ -278,4 +277,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
